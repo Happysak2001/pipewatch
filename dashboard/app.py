@@ -18,8 +18,16 @@ st.set_page_config(
 
 
 def bootstrap():
-    if Path(DB_PATH).exists():
-        return
+    # Check if data actually exists in the DB, not just if the file exists
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        count = pd.read_sql("SELECT COUNT(*) as n FROM validation_results", conn).iloc[0]["n"]
+        conn.close()
+        if count > 0:
+            return
+    except Exception:
+        pass
+
     from src.generator import generate_dataset
     from src.validator import validate_all
     from src.store import create_tables, save_pipeline_runs, save_validation_results
