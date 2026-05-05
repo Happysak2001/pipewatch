@@ -2,23 +2,28 @@ import pandas as pd
 import random
 from datetime import datetime, timedelta
 
-PIPELINES = ["orders_etl", "user_events", "inventory_sync", "payments_etl", "clickstream"]
+PIPELINES = [
+    "kafka_clinical_ingestion",
+    "databricks_sales_aggregation",
+    "inventory_sync_pipeline",
+    "payments_etl_pipeline",
+    "clickstream_events_pipeline",
+]
 
 SCHEMA_VERSIONS = {
-    "orders_etl":      ["v1", "v2", "v3"],
-    "user_events":     ["v1", "v2"],
-    "inventory_sync":  ["v1"],
-    "payments_etl":    ["v1", "v2", "v3"],
-    "clickstream":     ["v1", "v2"],
+    "kafka_clinical_ingestion":      ["v1", "v2", "v3"],
+    "databricks_sales_aggregation":  ["v1", "v2"],
+    "inventory_sync_pipeline":       ["v1"],
+    "payments_etl_pipeline":         ["v1", "v2", "v3"],
+    "clickstream_events_pipeline":   ["v1", "v2"],
 }
 
-# Baseline row counts per pipeline (what a healthy run looks like)
 BASELINE_ROWS = {
-    "orders_etl":     50000,
-    "user_events":    200000,
-    "inventory_sync": 15000,
-    "payments_etl":   30000,
-    "clickstream":    500000,
+    "kafka_clinical_ingestion":      50000,
+    "databricks_sales_aggregation":  200000,
+    "inventory_sync_pipeline":       15000,
+    "payments_etl_pipeline":         30000,
+    "clickstream_events_pipeline":   500000,
 }
 
 

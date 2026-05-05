@@ -15,11 +15,11 @@ THRESHOLDS = {
 }
 
 KNOWN_SCHEMA_VERSIONS = {
-    "orders_etl":      ["v1", "v2", "v3"],
-    "user_events":     ["v1", "v2"],
-    "inventory_sync":  ["v1"],
-    "payments_etl":    ["v1", "v2", "v3"],
-    "clickstream":     ["v1", "v2"],
+    "kafka_clinical_ingestion":      ["v1", "v2", "v3"],
+    "databricks_sales_aggregation":  ["v1", "v2"],
+    "inventory_sync_pipeline":       ["v1"],
+    "payments_etl_pipeline":         ["v1", "v2", "v3"],
+    "clickstream_events_pipeline":   ["v1", "v2"],
 }
 
 

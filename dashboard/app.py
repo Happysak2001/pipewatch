@@ -49,18 +49,23 @@ def load(query: str) -> pd.DataFrame:
 
 
 def load_summary() -> pd.DataFrame:
-    return load("""
+    df = load("""
         SELECT
             pipeline_name,
             COUNT(*)                                           AS total_runs,
             SUM(CASE WHEN overall = 'PASS' THEN 1 ELSE 0 END) AS passed,
             SUM(CASE WHEN overall = 'WARN' THEN 1 ELSE 0 END) AS warned,
             SUM(CASE WHEN overall = 'FAIL' THEN 1 ELSE 0 END) AS failed,
-            ROUND(AVG(health_score), 1)                        AS avg_score
+            ROUND(AVG(health_score), 1)                        AS avg_score,
+            MAX(run_time)                                      AS last_run
         FROM validation_results
         GROUP BY pipeline_name
         ORDER BY avg_score ASC
     """)
+    df["status"] = df["avg_score"].apply(
+        lambda s: "✅ Healthy" if s >= 75 else ("⚠️ Degraded" if s >= 50 else "❌ Critical")
+    )
+    return df
 
 
 def load_trend(pipeline: str) -> pd.DataFrame:
@@ -211,7 +216,11 @@ FAULT_LABELS = {
 col_a, col_b, col_c = st.columns([2, 2, 1])
 with col_a:
     sim_pipeline = st.selectbox("Pipeline", [
-        "orders_etl", "user_events", "inventory_sync", "payments_etl", "clickstream"
+        "kafka_clinical_ingestion",
+        "databricks_sales_aggregation",
+        "inventory_sync_pipeline",
+        "payments_etl_pipeline",
+        "clickstream_events_pipeline",
     ])
 with col_b:
     sim_fault_label = st.selectbox("Fault to inject", list(FAULT_LABELS.keys()))
@@ -255,29 +264,47 @@ if run_sim:
 
     score   = report["health_score"]
     overall = report["overall"]
+    status_label = "Healthy" if overall == "PASS" else ("Degraded" if overall == "WARN" else "Critical")
+    status_icon  = "✅" if overall == "PASS" else ("⚠️" if overall == "WARN" else "❌")
     color   = "#d4edda" if overall == "PASS" else ("#fff3cd" if overall == "WARN" else "#f8d7da")
 
     st.markdown(f"""
     <div style="background:{color}; padding:16px 20px; border-radius:8px; margin-top:12px;">
-        <h4 style="margin:0">{sim_pipeline} &nbsp;|&nbsp; Health Score: {score}/100 &nbsp;[{overall}]</h4>
+        <h4 style="margin:0">{status_icon} {sim_pipeline} &nbsp;|&nbsp; {status_label} &nbsp;|&nbsp; Health Score: {score}/100</h4>
     </div>
     """, unsafe_allow_html=True)
 
+    st.markdown("**Why this result:**")
+    check_icons = {"PASS": "✅", "WARN": "⚠️", "FAIL": "❌"}
     for check in report["checks"]:
-        icon = "PASS" if check["result"] == "PASS" else ("WARN" if check["result"] == "WARN" else "FAIL")
-        color2 = "#d4edda" if icon == "PASS" else ("#fff3cd" if icon == "WARN" else "#f8d7da")
+        r      = check["result"]
+        icon   = check_icons[r]
+        color2 = "#d4edda" if r == "PASS" else ("#fff3cd" if r == "WARN" else "#f8d7da")
         st.markdown(f"""
         <div style="background:{color2}; padding:8px 14px; border-radius:6px; margin-top:6px; font-size:0.9em;">
-            <b>[{icon}]</b> {check['check']} — {check['message']}
+            {icon} <b>{check['check']}</b> — {check['message']}
         </div>
         """, unsafe_allow_html=True)
+
+    # Score breakdown
+    warn_ct = sum(1 for c in report["checks"] if c["result"] == "WARN")
+    fail_ct = sum(1 for c in report["checks"] if c["result"] == "FAIL")
+    st.markdown(f"""
+    **Score breakdown:** 100 base
+    {"− " + str(warn_ct * 10) + " (" + str(warn_ct) + " warning/s × 10)" if warn_ct else ""}
+    {"− " + str(fail_ct * 25) + " (" + str(fail_ct) + " failure/s × 25)" if fail_ct else ""}
+    **= {score}/100**
+    """)
 
     if sim_alerts:
         st.markdown("**Alerts fired:**")
         for a in sim_alerts:
-            st.error(f"[{a['severity']}] {a['rule_name']} — {a['message']}")
+            if a["severity"] == "CRITICAL":
+                st.error(f"❌ [{a['severity']}] {a['rule_name']} — {a['message']}")
+            else:
+                st.warning(f"⚠️ [{a['severity']}] {a['rule_name']} — {a['message']}")
 
-    st.success("Result saved to database. Dashboard below has refreshed.")
+    st.success("Result saved. Dashboard below updated.")
 
 st.divider()
 
@@ -317,8 +344,37 @@ def color_score(val):
     return "background-color: #f8d7da; color: #721c24"
 
 
-styled = summary.style.map(color_score, subset=["avg_score"])
+display_summary = summary[["pipeline_name", "status", "avg_score", "total_runs", "passed", "warned", "failed", "last_run"]].copy()
+display_summary.columns = ["Pipeline", "Status", "Avg Score", "Total Runs", "Passed", "Warned", "Failed", "Last Run"]
+styled = display_summary.style.map(color_score, subset=["Avg Score"])
 st.dataframe(styled, use_container_width=True, hide_index=True)
+
+# Freshness section
+st.subheader("Pipeline Freshness")
+st.caption("When each pipeline last ran and how fresh the data is right now.")
+
+now = datetime.now()
+for _, row in summary.iterrows():
+    try:
+        last = pd.to_datetime(row["last_run"], format="mixed")
+        age_h = (now - last).total_seconds() / 3600
+        if age_h < 6:
+            f_icon, f_label = "✅", f"Fresh — {age_h:.1f}h ago"
+        elif age_h < 24:
+            f_icon, f_label = "⚠️", f"Aging — {age_h:.1f}h ago"
+        else:
+            f_icon, f_label = "❌", f"Stale — {age_h:.1f}h ago"
+    except Exception:
+        f_icon, f_label = "?", "Unknown"
+
+    st.markdown(f"""
+    <div style="display:flex; justify-content:space-between; padding:8px 14px;
+         border-radius:6px; margin-bottom:6px; background:#f8f9fa; font-size:0.9em;">
+        <b>{row['pipeline_name']}</b>
+        <span>Last run: {row['last_run']}</span>
+        <span>{f_icon} {f_label}</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.divider()
 
