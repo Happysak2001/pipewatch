@@ -3,6 +3,7 @@ import json
 import sqlite3
 import pandas as pd
 import streamlit as st
+from pathlib import Path
 
 sys.path.append(".")
 
@@ -13,6 +14,29 @@ st.set_page_config(
     page_icon=".",
     layout="wide",
 )
+
+
+def bootstrap():
+    """Generate data and populate the database if it doesn't exist yet."""
+    if Path(DB_PATH).exists():
+        return
+    from src.generator import generate_dataset
+    from src.validator import validate_all
+    from src.store import create_tables, save_pipeline_runs, save_validation_results
+    from src.alerts import run_alert_engine, save_alerts
+
+    Path("data").mkdir(exist_ok=True)
+    df = generate_dataset(days=30)
+    df.to_csv("data/pipeline_runs.csv", index=False)
+    results = validate_all(df)
+    create_tables()
+    save_pipeline_runs(df)
+    save_validation_results(results)
+    alerts = run_alert_engine(results)
+    save_alerts(alerts)
+
+
+bootstrap()
 
 
 # ── Data loaders ─────────────────────────────────────────────────────────────
