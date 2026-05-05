@@ -2,6 +2,10 @@
 
 Data pipeline observability system that monitors pipeline health, detects data quality issues, and alerts on failures.
 
+**Live Demo:** https://happies-pipewatch.streamlit.app
+
+**GitHub:** https://github.com/Happysak2001/pipewatch
+
 ## What it does
 
 Simulates production data pipelines and monitors them across 5 dimensions:
