@@ -8,7 +8,7 @@ from datetime import datetime
 
 sys.path.append(".")
 
-DB_PATH = "data/observability.db"
+DB_PATH = "data/observability_v2.db"
 
 st.set_page_config(
     page_title="PipeWatch",

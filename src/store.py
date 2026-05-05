@@ -3,7 +3,7 @@ import json
 import pandas as pd
 from pathlib import Path
 
-DB_PATH = "data/observability.db"
+DB_PATH = "data/observability_v2.db"
 
 
 def get_connection():

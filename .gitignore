@@ -7,7 +7,7 @@ venv/
 .venv/
 
 # Data files (regenerated on each run)
-data/observability.db
+data/observability*.db
 
 # Pytest
 .pytest_cache/
