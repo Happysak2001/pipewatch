@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Data files (regenerated on each run)
+data/observability.db
+
+# Pytest
+.pytest_cache/
