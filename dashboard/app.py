@@ -330,7 +330,7 @@ st.caption("How the health score of a pipeline changed day by day. A sudden drop
 
 selected = st.selectbox("Select pipeline", summary["pipeline_name"].tolist())
 trend = load_trend(selected)
-trend["run_time"] = pd.to_datetime(trend["run_time"])
+trend["run_time"] = pd.to_datetime(trend["run_time"], format="mixed", dayfirst=False)
 st.line_chart(trend.set_index("run_time")[["health_score"]], height=250)
 
 st.divider()
