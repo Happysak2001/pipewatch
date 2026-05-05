@@ -53,11 +53,11 @@ def test_row_count_no_previous():
 # ── Schema ────────────────────────────────────────────────────────────────────
 
 def test_schema_pass():
-    result = check_schema("orders_etl", "v3")
+    result = check_schema("kafka_clinical_ingestion", "v3")
     assert result["result"] == "PASS"
 
 def test_schema_fail_unknown_version():
-    result = check_schema("orders_etl", "v99")
+    result = check_schema("kafka_clinical_ingestion", "v99")
     assert result["result"] == "FAIL"
 
 def test_schema_fail_unknown_pipeline():
